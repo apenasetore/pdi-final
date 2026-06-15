@@ -1,45 +1,33 @@
 %----------------------------------------------------------
 % OTSU_HUE_RGB_SEG  (demo de 1 imagem)
 % Renderiza um mapa Doppler para imagem colorida e segmenta o vaso azul
-% por dois caminhos: azulidade no RGB e no HSV, cada um com Otsu.
-% A logica esta em seg_doppler_image.m (reutilizada por compare_hsv_rgb.m).
+% pelos quatro metodos (RGB+Otsu, HSV+Otsu, K-means, SLIC).
+% A logica esta em segment_doppler.m (reutilizada por eval_methods.m).
 %
 % Rodar com o MATLAB na pasta ProjetoFinal.
 %----------------------------------------------------------
 
-clear; close all; clc;
+clc; clear; close all;
 
 file = fullfile('vd_signals','vd_signals_01.mat');
 data = load(file);
-VD = data.Data;
 
-[BW_rgb, BW_hsv, RGB] = seg_doppler_image(VD);
+[masks, RGB] = segment_doppler(data.Data);
 
-figure('Color','w', 'Position',[100 100 1200 400]);
+methods = {'rgb','RGB + Otsu'; 'hsv','HSV + Otsu'; 'kmeans','K-means'; 'slic','SLIC'};
+nm = size(methods,1);
 
-subplot(1,3,1);
-imshow(RGB);
-title("Original (Doppler)");
+figure('Color','w', 'Position',[100 100 320*(nm+1) 320]);
+subplot(1,nm+1,1); imshow(RGB); title('Original (Doppler)');
+for j = 1:nm
+    subplot(1,nm+1,j+1);
+    imshow(masks.(methods{j,1}));
+    title(methods{j,2});
+end
 
-subplot(1,3,2);
-imshow(BW_rgb);
-title("Azul via RGB + Otsu");
-
-subplot(1,3,3);
-imshow(BW_hsv);
-title("Azul via HSV + Otsu");
-
-area_rgb = sum(BW_rgb(:));
-area_hsv = sum(BW_hsv(:));
-total = numel(BW_rgb);
-
-fprintf("=== Comparacao das tecnicas (1 imagem) ===\n");
-fprintf("Area azul (RGB): %d px (%.1f%%)\n", area_rgb, 100*area_rgb/total);
-fprintf("Area azul (HSV): %d px (%.1f%%)\n", area_hsv, 100*area_hsv/total);
-
-% Concordancia entre as mascaras (IoU)
-inter = sum(BW_rgb(:) & BW_hsv(:));
-uni   = sum(BW_rgb(:) | BW_hsv(:));
-if uni > 0
-    fprintf("IoU entre as mascaras RGB x HSV: %.2f\n", inter/uni);
+total = numel(RGB(:,:,1));
+fprintf('=== Area segmentada por metodo (1 imagem) ===\n');
+for j = 1:nm
+    a = nnz(masks.(methods{j,1}));
+    fprintf('%-12s: %5d px (%.1f%%)\n', methods{j,2}, a, 100*a/total);
 end
