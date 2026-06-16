@@ -2,11 +2,13 @@ function RGB = doppler_to_rgb(VD)
 
     VD(isnan(VD)) = 0;
 
-    G = size(VD,2);
+   
+   G = size(VD,2);
     c0 = round(G/4) + 1;
     c1 = round(3*G/4);
     VD = VD(:, c0:c1);
 
+    % --- render VD -> imagem colorida (caxis + dopplermap) ---
     m = round(max(abs(VD(:))), 2);
     if m == 0, m = 0.01; end
     VD_clip = max(VD, -m);                       % satura em [-m, m] (= caxis)

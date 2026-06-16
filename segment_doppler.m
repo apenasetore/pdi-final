@@ -5,7 +5,7 @@ function [masks, RGB] = segment_doppler(VD, opt)
     if ~isfield(opt,'postprocess'),  opt.postprocess = true;  end
 
     RGB = doppler_to_rgb(VD);
-
+   
     % --- pre-processamento gauss  --- %
     if opt.smooth > 0
         RGBp = im2uint8(imgaussfilt(im2double(RGB), opt.smooth));
@@ -18,24 +18,8 @@ function [masks, RGB] = segment_doppler(VD, opt)
     [masks.dist, Dm] = euclidia_limiar(RGBp,sample);
     masks.kmeans = seg_kmeans(RGBp, Dm,opt.kClusters);
 
-    % --- pos-processamento comum: fechamento morfologico ---
-    if opt.postprocess
-        for f = fieldnames(masks)'
-            masks.(f{1}) = postprocess_mask(masks.(f{1}));
-        end
-    end
 end
 
-%==========================================================================
-% Pos-processamento (Aula 08): fechamento morfologico.
-% Fecha pequenas falhas/buracos no vaso (dilatacao seguida de erosao) e
-% preenche buracos internos, deixando a mascara mais solida.
-function BW = postprocess_mask(BW)
-    if ~any(BW(:)), return; end
-    se = strel('disk', 2);
-    BW = imclose(BW, se);        % fecha lacunas finas
-    BW = imfill(BW, 'holes');    % preenche buracos internos
-end
 
 %============================================================
 % Segmentação por limiarização utilizando a distância Euclidiana
@@ -83,16 +67,26 @@ function [R, Dm]= euclidia_limiar(RGB,sample)
 end
 %==========================================================================
 % Metodo K-means agrupa as cores em K clusters no espaco Lab e
-function BW = seg_kmeans(RGB, ~, K)
-  lab = rgb2lab(RGB);
-  L = imsegkmeans(single(lab), K, "NumAttempts",3);  % +estabilidade
+function BW = seg_kmeans(RGB, Dm, K)
+    
+    rgb = RGB;
 
-  bstar = lab(:,:,3);              
-  meanB = zeros(K,1);
-  for k = 1:K
-      meanB(k) = mean(bstar(L == k));
-  end
-  [~, kBlue] = min(meanB);         % cluster de b* mais negativo = azul
-  BW = (L == kBlue);
+    % K-means no RGB
+    labels = imsegkmeans(rgb,K);
+    dmax   = max(Dm(:));
+    Dn = Dm/dmax;
+    less_mean = 10000;
+    idx = 1;
+    
+    for i=1:K
+        mask = labels == i;
+        aux=mean(Dn(mask));
+        if aux < less_mean
+            less_mean = aux;
+            idx = i;
+        end
+    end
+    BW = labels == idx;
+    
 end
 

@@ -1,4 +1,4 @@
-
+%
 
 clc; clear; close all;
 
@@ -7,17 +7,16 @@ gtdir = fullfile('imgs','ground_truth');
 ovdir = fullfile('imgs','compare_methods');
 if ~exist(ovdir,'dir'), mkdir(ovdir); end
 
-% --- metodos avaliados (campo em masks, rotulo) -- facil de estender ---
+% --- metodos avaliados (campo em masks, rotulo) -- 
 methods = {'dist','Distancai_Euclidiana'; 'kmeans','K-means';};
 nm = size(methods,1);
 
 % --- opcoes padronizadas aplicadas a TODOS os metodos ---
-opt.smooth      = 0.4;      % sigma do pre-filtro Gaussiano (0 = desligado)
-opt.kClusters   = 5;
+opt.smooth    = 1.6;      % sigma do pre-filtro Gaussiano 
+opt.kClusters   = 3;
 
 L = dir(fullfile(vddir,'vd_signals_*.mat'));
 n = numel(L);
-if n == 0, error('Nenhum vd_signals_*.mat encontrado em %s', vddir); end
 
 % acumuladores (n simulacoes x nm metodos)
 idx  = zeros(n,1);
