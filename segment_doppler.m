@@ -6,15 +6,13 @@ function [masks, RGB] = segment_doppler(VD, opt)
 
     RGB = doppler_to_rgb(VD);
    
-    % --- pre-processamento gauss  --- %
     if opt.smooth > 0
         RGBp = im2uint8(imgaussfilt(im2double(RGB), opt.smooth));
     else
         RGBp = RGB;
     end
-    % -- blue sample ---
     sample = imread("sample.png");
-    % --- roda os metodos sobre a mesma imagem ---
+
     [masks.dist, Dm] = euclidia_limiar(RGBp,sample);
     masks.kmeans = seg_kmeans(RGBp, Dm,opt.kClusters);
 
@@ -29,8 +27,7 @@ function [R, Dm]= euclidia_limiar(RGB,sample)
     nr = size(RGB,1);
     nc = size(RGB,2);
     lab = RGB;
-    % sample = rgb2lab(sample);
-    % Color channel 1 da amostra
+
     sample_ch1 = sample(:,:,1);
     sample_ch1_v = sort(sample_ch1(:));
     % Interquartile mean do channel 1 da amostra
