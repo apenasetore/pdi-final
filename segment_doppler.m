@@ -1,9 +1,8 @@
 function [masks, RGB] = segment_doppler(VD, opt)
     if nargin < 2, opt = struct(); end
-    if ~isfield(opt,'smooth'),       opt.smooth = 0.4;          end
-    if ~isfield(opt,'postprocess'),  opt.postprocess = true;  end
+    if ~isfield(opt,'smooth'),       opt.smooth = 0.4;        end
     if ~isfield(opt,'kClusters'),    opt.kClusters = 3;       end
-    if ~isfield(opt,'nSuperpixels'), opt.nSuperpixels = 200;  end
+    if ~isfield(opt,'postprocess'),  opt.postprocess = true;  end
 
     RGB = doppler_to_rgb(VD);
 
@@ -19,7 +18,7 @@ function [masks, RGB] = segment_doppler(VD, opt)
     [masks.dist, Dm] = euclidia_limiar(RGBp,sample);
     masks.kmeans = seg_kmeans(RGBp, Dm,opt.kClusters);
 
-    % --- pos-processamento comum (Aula 08) ---
+    % --- pos-processamento comum: fechamento morfologico ---
     if opt.postprocess
         for f = fieldnames(masks)'
             masks.(f{1}) = postprocess_mask(masks.(f{1}));
@@ -28,14 +27,15 @@ function [masks, RGB] = segment_doppler(VD, opt)
 end
 
 %==========================================================================
-function b = blueness_rgb(RGB)
-    Rd = double(RGB(:,:,1));
-    Gd = double(RGB(:,:,2));
-    Bd = double(RGB(:,:,3));
-    b = max(0, (Bd - max(Rd, Gd)) / 255);
+% Pos-processamento (Aula 08): fechamento morfologico.
+% Fecha pequenas falhas/buracos no vaso (dilatacao seguida de erosao) e
+% preenche buracos internos, deixando a mascara mais solida.
+function BW = postprocess_mask(BW)
+    if ~any(BW(:)), return; end
+    se = strel('disk', 2);
+    BW = imclose(BW, se);        % fecha lacunas finas
+    BW = imfill(BW, 'holes');    % preenche buracos internos
 end
-
-
 
 %============================================================
 % Segmentação por limiarização utilizando a distância Euclidiana
@@ -68,43 +68,31 @@ function [R, Dm]= euclidia_limiar(RGB,sample)
     img_cols = reshape(lab, nr*nc, 3);
     img_cols = double(img_cols);
     s = (img_iqm - img_cols).^2;
+    
     D = sqrt(sum(s,2));
+    Dm = reshape(D, nr, nc);
+
+    dmax   = max(Dm(:));
+    Dn     = Dm / dmax;
+    t = graythresh(Dn);
     
-    Dm = reshape(D,nr,nc);
-    
-    dmax = max(Dm(:));
-    t = graythresh(Dm/dmax) * dmax; 
-    R = Dm < t;
-    %figure, imshow(R), title(['Segmentação usando dist Euclid no color space ']);
+    t = t * dmax;
+    R = Dm < t;                     
 
 
 end
 %==========================================================================
-% Metodo K-means (Aula 10): agrupa as cores em K clusters no espaco Lab e
-% escolhe o cluster de maior azulidade media.
-function BW = seg_kmeans(RGB, Dm, K)
-    lab = rgb2lab(RGB);
-    L = imsegkmeans(single(lab), K);
+% Metodo K-means agrupa as cores em K clusters no espaco Lab e
+function BW = seg_kmeans(RGB, ~, K)
+  lab = rgb2lab(RGB);
+  L = imsegkmeans(single(lab), K, "NumAttempts",3);  % +estabilidade
 
-    meanBlue = zeros(K,1);
-    for k = 1:K
-        meanBlue(k) = mean(Dm(L == k));
-    end
-    [~, kBlue] = min(meanBlue);
-    BW = (L == kBlue);
+  bstar = lab(:,:,3);              
+  meanB = zeros(K,1);
+  for k = 1:K
+      meanB(k) = mean(bstar(L == k));
+  end
+  [~, kBlue] = min(meanB);         % cluster de b* mais negativo = azul
+  BW = (L == kBlue);
 end
 
-%==========================================================================
-% Pos-processamento comum (Aula 08): morfologia + componentes conexos.
-% Fecha buracos e remove manchas espurias, mantendo os maiores blobs.
-function BW = postprocess_mask(BW)
-    if ~any(BW(:)), return; end
-    se = strel('disk', 1);
-    BW = imopen(BW, se);              % remove pontos isolados
-    BW = imclose(BW, se);             % une falhas finas
-    BW = imfill(BW, 'holes');         % fecha buracos internos
-    BW = bwareaopen(BW, 15);          % descarta componentes muito pequenos
-    if any(BW(:))
-        BW = bwareafilt(BW, 2);       % mantem os 2 maiores componentes conexos
-    end
-end

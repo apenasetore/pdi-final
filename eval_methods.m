@@ -1,25 +1,4 @@
-%----------------------------------------------------------
-% EVAL_METHODS
-% Avaliacao PADRONIZADA dos metodos de segmentacao da imagem Doppler.
-% Todos os metodos partem da mesma imagem renderizada, passam pelo mesmo
-% pre/pos-processamento (definidos em segment_doppler) e sao medidos pelas
-% mesmas metricas contra o mesmo ground truth -- isolando o passo de
-% segmentacao para decidir, de forma justa, qual e o melhor.
-%
-% Metricas (Aula 05), com funcoes nativas: Dice (dice), IoU (jaccard),
-% alem de precisao e revocacao a partir de TP/FP/FN.
-%
-% Saidas:
-%   - comparison_methods.csv  (uma linha por simulacao e metodo)
-%   - tabela-resumo por metodo (medias) no console
-%   - veredito (melhor por Dice medio e nº de vitorias por imagem)
-%   - paineis imgs/compare_methods/cmp_XX.png: Doppler | GT | mapa de erro de
-%     cada metodo (verde=acerto, vermelho=falso+, azul=falso-)
-%   - imgs/compare_methods/summary.png: barras das metricas medias + heatmap
-%     de Dice por simulacao x metodo
-%
-% Rodar APOS make_ground_truth.m, com o MATLAB na pasta ProjetoFinal.
-%----------------------------------------------------------
+
 
 clc; clear; close all;
 
@@ -33,10 +12,8 @@ methods = {'dist','Distancai_Euclidiana'; 'kmeans','K-means';};
 nm = size(methods,1);
 
 % --- opcoes padronizadas aplicadas a TODOS os metodos ---
-opt.smooth      = 0;      % sigma do pre-filtro Gaussiano (0 = desligado)
-opt.postprocess = true;   % morfologia + componentes conexos
-opt.kClusters   = 3;
-opt.nSuperpixels= 200;
+opt.smooth      = 0.4;      % sigma do pre-filtro Gaussiano (0 = desligado)
+opt.kClusters   = 5;
 
 L = dir(fullfile(vddir,'vd_signals_*.mat'));
 n = numel(L);
@@ -66,14 +43,16 @@ for i = 1:n
     % painel: Doppler | GT | mapas de erro por metodo
     % (verde = acerto, vermelho = falso positivo, azul = falso negativo)
     fig = figure('Color','w','Visible','off','Position',[100 100 300*(nm+2) 360]);
+    try, theme(fig,'light'); catch, end          % evita tema escuro (texto branco)
     t = tiledlayout(fig,1,nm+2,'TileSpacing','compact','Padding','compact');
     title(t,sprintf('Simulacao %02d   (verde=acerto  vermelho=falso+  azul=falso-)',idx(i)), ...
-        'FontWeight','bold');
-    nexttile; imshow(RGB); title('Doppler');
-    nexttile; imshow(gt);  title('Ground truth');
+        'FontWeight','bold','Color','k');
+    nexttile; imshow(RGB); title('Doppler','Color','k');
+    nexttile; imshow(gt);  title('Ground truth','Color','k');
     for j = 1:nm
         nexttile; imshow(error_overlay(masks.(methods{j,1}), gt));
-        title(sprintf('%s  (Dice %.2f / IoU %.2f)', methods{j,2}, dice(i,j), iou(i,j)));
+        title(sprintf('%s  (Dice %.2f / IoU %.2f)', methods{j,2}, dice(i,j), iou(i,j)), ...
+            'Color','k');
     end
     exportgraphics(fig,fullfile(ovdir,sprintf('cmp_%02d.png',idx(i))),'Resolution',130);
     close(fig);
@@ -105,28 +84,19 @@ for j = 1:nm
     fprintf('  %-8s venceu em %2d de %d imagens\n', methods{j,2}, nnz(dom==j), n);
 end
 
-% --- figura-resumo: barras das medias + heatmap de Dice por caso ---
-fig = figure('Color','w','Visible','off','Position',[100 100 1100 440]);
-t = tiledlayout(fig,1,2,'TileSpacing','compact','Padding','compact');
-title(t,'Resumo da comparacao entre metodos','FontWeight','bold');
-
-% barras agrupadas: cada metodo com Dice/IoU/Prec/Rec medios
-nexttile;
+% --- figura-resumo: barras das metricas medias por metodo ---
+fig = figure('Color','w','Visible','off','Position',[100 100 700 440]);
+try, theme(fig,'light'); catch, end              % evita tema escuro (texto branco)
+ax = axes(fig);
 means = [mean(dice)' mean(iou)' mean(prec)' mean(rec)'];   % nm x 4
-b = bar(means);
-set(gca,'XTickLabel',methods(:,2));
-ylim([0 1]); grid on;
-ylabel('valor medio'); title('Metricas medias por metodo');
-legend({'Dice','IoU','Precisao','Revocacao'},'Location','southoutside','Orientation','horizontal');
-
-% heatmap: Dice por simulacao (linhas) x metodo (colunas)
-nexttile;
-imagesc(dice, [0 1]);
-colormap(gca, parula); colorbar;
-set(gca,'XTick',1:nm,'XTickLabel',methods(:,2));
-set(gca,'YTick',1:n,'YTickLabel',compose('%02d',idx));
-xlabel('metodo'); ylabel('simulacao');
-title('Dice por simulacao (mais claro = melhor)');
+bar(ax, means);
+set(ax,'XTickLabel',methods(:,2),'XColor','k','YColor','k');
+ylim(ax,[0 1]); grid(ax,'on');
+ylabel(ax,'valor medio','Color','k');
+title(ax,'Metricas medias por metodo','Color','k');
+lgd = legend(ax,{'Dice','IoU','Precisao','Revocacao'}, ...
+    'Location','southoutside','Orientation','horizontal');
+set(lgd,'TextColor','k');
 
 exportgraphics(fig,fullfile(ovdir,'summary.png'),'Resolution',130);
 close(fig);
