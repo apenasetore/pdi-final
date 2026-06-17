@@ -1,5 +1,0 @@
-\babel@toc {brazil}{}\relax 
-\beamer@sectionintoc {1}{Objetivo}{3}{0}{1}
-\beamer@sectionintoc {2}{Fundamentação Teórica}{4}{0}{2}
-\beamer@sectionintoc {3}{Implementação}{9}{0}{3}
-\beamer@sectionintoc {4}{Resultados e conclusões}{11}{0}{4}

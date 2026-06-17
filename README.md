@@ -1,55 +1,74 @@
-# Projeto Final — Segmentação de artérias em Doppler colorido
+# Segmentação de Vasos em Doppler Colorido
 
-Disciplina IF69D (PDI). O objetivo é **segmentar os vasos a partir da imagem
-Doppler colorida** — como se só houvesse a figura na tela, sem acesso ao campo de
-velocidade bruto — e avaliar a precisão contra um *ground truth*.
+Projeto final da disciplina **IF69D — Processamento Digital de Imagens (PDI)**, UTFPR
+(Prof. Gustavo B. Borba).
 
-Os dados vêm de simulações de ultrassom Doppler (toolbox MUST) sobre os phantoms
-em `imgs/phantom` (vasos azuis e vermelhos sobre fundo preto, 128×128). Cada
-`vd_signals/vd_signals_XX.mat` guarda o mapa Doppler de velocidade `Data`
-(256×256, m/s, `NaN` fora do feixe), cobrindo x ∈ [−12.8, 12.8] mm — o dobro da
-largura do phantom (x ∈ [−6.4, 6.4] mm), por isso o método recorta as colunas
-centrais antes de comparar.
+**Autores:** Étore Maloso Tronconi e Henrique Gomes Pinto Bubniak.
 
-## Método
+## Objetivo
 
-A entrada é convertida numa **imagem colorida** (mapa `jet`) e o vaso azul
-(fluxo se afastando da sonda) é segmentado por **quatro métodos**, todos partindo
-da mesma imagem renderizada e com o mesmo pré/pós-processamento — a comparação
-isola apenas o passo de segmentação:
+Segmentar o **vaso azul** — fluxo se afastando da sonda — em imagens de **Doppler
+colorido** geradas por simulação, e comparar duas abordagens clássicas de
+segmentação por cor avaliando-as contra um *ground truth*.
 
-1. **RGB + Otsu** (Aula 08/09) — azulidade = `max(0, (B − max(R,G))/255)`, limiar de Otsu.
-2. **HSV + Otsu** (Aula 09) — azulidade = `max(0, 1 − |H − 0.62|/0.15) · S`, limiar de Otsu.
-3. **K-means** (Aula 10) — `imsegkmeans` no espaço Lab (K=3); escolhe automaticamente o cluster de maior azulidade média.
-4. **SLIC** (Aula 10) — `superpixels` + Otsu sobre a azulidade média de cada superpixel.
+A base é composta por 15 casos simulados (numerados `01`..`15`) de phantoms
+vasculares 128×128, produzidos com o [MUST (Matlab UltraSound Toolbox)](https://www.biomecardio.com/MUST/).
 
-Pipeline padronizado (em `segment_doppler.m`):
-recorte das colunas centrais (FOV do phantom) → render `jet` 128×128 →
-**pré-suavização Gaussiana opcional** (Aula 04) → segmentação → **pós-processamento
-comum** (Aula 08): `imopen`/`imclose`, `imfill`, `bwareaopen`, `bwareafilt` (mantém
-os maiores componentes conexos). O Otsu é aplicado **só sobre os pixels não-nulos**
-(evita o colapso do limiar num fundo quase todo zero).
+## Métodos comparados
 
-## Arquivos
+Ambos partem da mesma imagem RGB renderizada e do mesmo pré-filtro Gaussiano,
+padronizados em `segment_doppler.m`:
 
-- `doppler_to_rgb.m` — renderização comum: VD → imagem `jet` 128×128 (uint8).
-- `segment_doppler.m` — função: VD → struct de máscaras (`rgb`, `hsv`, `kmeans`, `slic`); aceita `opt` (suavização, pós-processamento, K, nº de superpixels).
-- `otsu_hue_rgb_seg.m` — demo de 1 imagem (Original | os 4 métodos).
-- `make_ground_truth.m` — phantom: azul → branco, resto → preto → `imgs/ground_truth/gt_XX.png`.
-- `eval_methods.m` — avaliação padronizada dos 4 métodos contra o ground truth nos 20 casos.
+1. **Distância Euclidiana + Otsu** (`euclidia_limiar`)
+   Calcula a média interquartil de uma amostra de referência (`sample.png`) e
+   limiariza a distância de cor de cada pixel a essa cor por Otsu (`graythresh`).
+   Limitação: uma cor única não separa bem o azul do fundo/vermelho.
 
-## Como rodar (MATLAB, na pasta ProjetoFinal)
+2. **K-means** (`seg_kmeans`, via `imsegkmeans`, K=3)
+   Agrupa os pixels em K clusters e seleciona o cluster mais próximo da cor-alvo.
+   Mais robusto e, em geral, com melhor Dice/IoU.
 
-```matlab
-make_ground_truth     % gera os gt_XX.png a partir dos phantoms
-eval_methods          % segmenta os 20 casos e avalia contra o GT
+A avaliação (`eval_methods.m`) calcula **Dice**, **IoU**, **Precisão** e **Recall**
+por imagem, gera painéis de mapa de erro (verde = acerto, vermelho = falso
+positivo, azul = falso negativo) e um resumo com as médias por método. O K-means
+apresenta o melhor desempenho médio na maioria dos casos.
+
+## Estrutura do repositório
+
+```
+.
+├── segment_doppler.m      # pipeline de segmentação (os dois métodos)
+├── doppler_to_rgb.m       # converte sinal Doppler (VD) em imagem RGB
+├── dopplermap.m           # colormap Doppler do MUST (Damien Garcia, LGPL-3.0)
+├── make_ground_truth.m    # gera as máscaras de referência a partir dos phantoms
+├── eval_methods.m         # executa e avalia os métodos, gera painéis e resumo
+├── sample.png             # amostra de cor-alvo (azul) usada na limiarização
+├── vd_signals/            # sinais Doppler simulados (vd_signals_01..15.mat)
+├── imgs/
+│   ├── phantom/           # phantoms de entrada (vessels_01..15.png)
+│   ├── ground_truth/      # máscaras de referência (gt_01..15.png)
+│   └── compare_methods/   # saídas: painéis cmp_XX.png e summary.png
+├── relatorio_pdi_final.pdf
+└── apresentacao.pdf
 ```
 
-Saídas de `eval_methods`:
-- `comparison_methods.csv` — Dice, IoU, precisão e revocação de cada método por simulação;
-- tabela-resumo (médias por método) e **veredito** no console (melhor por Dice médio + nº de vitórias por imagem);
-- `imgs/compare_methods/cmp_XX.png` — por caso: Doppler | Ground truth | **mapa de erro** de cada método (verde = acerto, vermelho = falso-positivo, azul = falso-negativo);
-- `imgs/compare_methods/summary.png` — barras das métricas médias por método + **heatmap** de Dice por simulação×método.
+## Como executar
 
-Requer a Image Processing Toolbox (`graythresh`, `rgb2hsv`, `imsegkmeans`,
-`superpixels`, `imgaussfilt`, `bwareafilt`, `dice`, `jaccard`, `imresize`).
+Requer MATLAB com a **Image Processing Toolbox** (`imsegkmeans`, `dice`,
+`jaccard`, `graythresh`).
+
+```matlab
+% (opcional) regerar as máscaras de referência a partir dos phantoms
+make_ground_truth
+
+% executar e avaliar os dois métodos sobre os 15 casos
+eval_methods
+```
+
+Os painéis de comparação e o gráfico-resumo são salvos em
+`imgs/compare_methods/`.
+
+## Créditos
+
+`dopplermap.m` faz parte do MUST (Matlab UltraSound Toolbox), © 2020 Damien
+Garcia, licença LGPL-3.0-or-later.

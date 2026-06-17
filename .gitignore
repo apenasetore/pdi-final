@@ -1,0 +1,20 @@
+# MATLAB
+*.asv
+*.m~
+slprj/
+
+# LaTeX build artifacts
+*.aux
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+*.synctex.gz
+
+# Saídas regeneráveis
+*.csv
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

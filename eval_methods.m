@@ -72,15 +72,6 @@ for j = 1:nm
     fprintf('  %-8s venceu em %2d de %d imagens\n', methods{j,2}, nnz(dom==j), n);
 end
  
-% % --- veredito iou ---
-% [~, best] = max(mean(iou));
-% [~, dom]  = max(iou, [], 2);              % metodo vencedor por imagem
-% fprintf('=== Veredito ===\n');
-% fprintf('Melhor metodo (IoU medio): %s  (%.3f)\n', methods{best,2}, mean(iou(:,best)));
-% for j = 1:nm
-%     fprintf('  %-8s venceu em %2d de %d imagens\n', methods{j,2}, nnz(dom==j), n);
-% end
-
 
 
 fig = figure('Color','w','Visible','off','Position',[100 100 700 440]);

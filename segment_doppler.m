@@ -2,7 +2,6 @@ function [masks, RGB] = segment_doppler(VD, opt)
     if nargin < 2, opt = struct(); end
     if ~isfield(opt,'smooth'),       opt.smooth = 0.4;        end
     if ~isfield(opt,'kClusters'),    opt.kClusters = 3;       end
-    if ~isfield(opt,'postprocess'),  opt.postprocess = true;  end
 
     RGB = doppler_to_rgb(VD);
    
