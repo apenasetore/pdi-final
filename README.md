@@ -1,9 +1,9 @@
 # Segmentação de Vasos em Doppler Colorido
 
 Projeto final da disciplina **IF69D — Processamento Digital de Imagens (PDI)**, UTFPR
-(Prof. Gustavo B. Borba).
+(Prof. Gustavo B. Borba e Prof. Humberto Gamba).
 
-**Autores:** Étore Maloso Tronconi e Henrique Gomes Pinto Bubniak.
+**Autores:** Etore Maloso Tronconi e Henrique Gomes Pinto Bubniak.
 
 ## Objetivo
 
